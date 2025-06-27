@@ -1,0 +1,2 @@
+model_name,mkb10_benchmark_block.csv,mkb10_benchmark_block_reverse.csv,mkb10_benchmark_level1.csv,mkb10_benchmark_level1_reverse.csv,mkb10_benchmark_sublevel.csv,mkb10_benchmark_sublevel_reverse.csv
+google/gemma-3-4b-it,20.83%,25.00%,26.91%,25.58%,27.38%,27.68%
