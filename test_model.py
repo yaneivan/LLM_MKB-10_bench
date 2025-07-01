@@ -4,20 +4,25 @@ import argparse
 import re
 import glob
 import asyncio
-import aiohttp
 from tqdm.asyncio import tqdm_asyncio
 from datetime import datetime
+import openai
 
 # ==============================================================================
 # НАСТРОЙКИ API И МОДЕЛИ
 # ==============================================================================
-BASE_URL = "http://10.203.1.11:4242/v1"
+OPENAI_API_KEY = "your-api-key-here"  # Замените на ваш ключ API
+OPENAI_API_BASE = "http://10.203.1.11:4242/v1"  # Базовый URL вашего API
 MODEL_NAME = "google/gemma-3-4b-it"
 TEMPERATURE = 0.0
 RESULTS_FILE = "test_results.csv"
 CONCURRENT_REQUESTS = 30000
 
 # ==============================================================================
+
+# Настройка клиента OpenAI
+openai.api_key = OPENAI_API_KEY
+openai.api_base = OPENAI_API_BASE
 
 def update_results_matrix_csv(model_name: str, benchmark_name: str, accuracy: str):
     data = {}
@@ -39,35 +44,31 @@ def update_results_matrix_csv(model_name: str, benchmark_name: str, accuracy: st
         for model, results in sorted(data.items()):
             row_to_write = {'model_name': model}; row_to_write.update(results); writer.writerow(row_to_write)
 
-async def fetch_one(session, semaphore, prompt_data):
-    """Асинхронно выполняет один запрос к API."""
+async def fetch_one(client, semaphore, prompt_data):
+    """Асинхронно выполняет один запрос к API используя библиотеку openai."""
     async with semaphore:
         system_prompt = "Твоя задача — ответить на вопрос с вариантами ответа. В качестве ответа дай ТОЛЬКО одну букву (A, B, C или D), соответствующую правильному варианту. Не добавляй никаких объяснений или лишних слов."
         user_prompt = prompt_data["prompt"]
         
-        payload = {
-            "model": MODEL_NAME,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "temperature": TEMPERATURE, "max_tokens": 5,
-        }
-        
         try:
-            async with session.post(f"{BASE_URL.rstrip('/')}/chat/completions", json=payload, timeout=60) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    response_text = data["choices"][0]["message"]["content"]
-                    parsed_answer = re.search(r'^\s*([A-D])', response_text.strip(), re.IGNORECASE)
-                    if parsed_answer and parsed_answer.group(1).upper() == prompt_data["correct_letter"]:
-                        return "correct"
-                    elif parsed_answer:
-                        return "incorrect"
-                    else:
-                        return "parsing_failure"
-                else:
-                    return "api_error"
+            response = await client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=TEMPERATURE,
+                max_tokens=5
+            )
+            
+            response_text = response.choices[0].message.content
+            parsed_answer = re.search(r'^\s*([A-D])', response_text.strip(), re.IGNORECASE)
+            if parsed_answer and parsed_answer.group(1).upper() == prompt_data["correct_letter"]:
+                return "correct"
+            elif parsed_answer:
+                return "incorrect"
+            else:
+                return "parsing_failure"
         except Exception:
             return "api_error"
 
@@ -108,8 +109,8 @@ async def run_single_test_async(benchmark_path: str, no_shuffle: bool):
     print(f"\n--- Начинаем асинхронный тест на '{benchmark_name}' ({mode}, {len(all_prompts)} запросов) ---")
     
     semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
-    async with aiohttp.ClientSession() as session:
-        tasks = [fetch_one(session, semaphore, p) for p in all_prompts]
+    async with openai.AsyncOpenAI() as client:
+        tasks = [fetch_one(client, semaphore, p) for p in all_prompts]
         results = await tqdm_asyncio.gather(*tasks, desc=f"Тестируем {benchmark_name}")
 
     correct = results.count("correct")
