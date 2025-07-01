@@ -11,7 +11,7 @@ import openai
 # ==============================================================================
 # НАСТРОЙКИ API И МОДЕЛИ
 # ==============================================================================
-OPENAI_API_KEY = "your-api-key-here"  # Замените на ваш ключ API
+OPENAI_API_KEY = "your-api-key-here"  # Замените на ваш ключ API или используйте переменную окружения
 OPENAI_API_BASE = "http://10.203.1.11:4242/v1"  # Базовый URL вашего API
 MODEL_NAME = "google/gemma-3-4b-it"
 TEMPERATURE = 0.0
@@ -19,10 +19,6 @@ RESULTS_FILE = "test_results.csv"
 CONCURRENT_REQUESTS = 30000
 
 # ==============================================================================
-
-# Настройка клиента OpenAI
-openai.api_key = OPENAI_API_KEY
-openai.api_base = OPENAI_API_BASE
 
 def update_results_matrix_csv(model_name: str, benchmark_name: str, accuracy: str):
     data = {}
@@ -109,9 +105,10 @@ async def run_single_test_async(benchmark_path: str, no_shuffle: bool):
     print(f"\n--- Начинаем асинхронный тест на '{benchmark_name}' ({mode}, {len(all_prompts)} запросов) ---")
     
     semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
-    async with openai.AsyncOpenAI() as client:
-        tasks = [fetch_one(client, semaphore, p) for p in all_prompts]
-        results = await tqdm_asyncio.gather(*tasks, desc=f"Тестируем {benchmark_name}")
+    client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE)
+    tasks = [fetch_one(client, semaphore, p) for p in all_prompts]
+    results = await tqdm_asyncio.gather(*tasks, desc=f"Тестируем {benchmark_name}")
+    await client.close()  # Закрываем клиент после использования
 
     correct = results.count("correct")
     parsing_failures = results.count("parsing_failure")
