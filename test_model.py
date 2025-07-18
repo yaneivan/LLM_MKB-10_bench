@@ -54,11 +54,20 @@ async def fetch_one(client, semaphore, prompt_data):
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=TEMPERATURE,
-                max_tokens=5
             )
             
             response_text = response.choices[0].message.content
-            parsed_answer = re.search(r'^\s*([A-D])', response_text.strip(), re.IGNORECASE)
+            
+            # УДАЛЯЕМ БЛОК <think> И ЕГО СОДЕРЖИМОЕ (ЕСЛИ ОН ЕСТЬ)
+            clean_text = re.sub(r'<think>.*?</think>', '', response_text, flags=re.DOTALL)
+            
+            # ИЩЕМ ОТВЕТ В ОЧИЩЕННОМ ТЕКСТЕ
+            parsed_answer = re.search(r'^\s*([A-D])', clean_text.strip(), re.IGNORECASE)
+            
+            # Если в очищенном тексте не нашли ответ - проверяем оригинальный текст
+            if not parsed_answer:
+                parsed_answer = re.search(r'^\s*([A-D])', response_text.strip(), re.IGNORECASE)
+            
             if parsed_answer and parsed_answer.group(1).upper() == prompt_data["correct_letter"]:
                 return "correct"
             elif parsed_answer:
