@@ -1,4 +1,7 @@
 model_name,mkb10_benchmark_block.csv,mkb10_benchmark_block_reverse.csv,mkb10_benchmark_level1.csv,mkb10_benchmark_level1.csv_no_shuffle,mkb10_benchmark_level1_reverse.csv,mkb10_benchmark_sublevel.csv,mkb10_benchmark_sublevel_reverse.csv
+gemma3:27b,50.0%,25.00%,49.06%,,26.16%,50.29%,30.75%
 google/gemma-3-4b-it,20.83%,25.00%,26.91%,,25.58%,27.38%,27.68%
 google/medgemma-4b-it,12.50%,16.67%,26.76%,,25.22%,27.60%,26.91%
 openai/gpt-4o,,,,95.64%,,,
+hf.co/unsloth/medgemma-27b-it-GGUF:Q4_K_M,37.50%,16.67%,45.22%,	,25.27%,50.00%,28.42%
+llama3.3, 100.00%, 	50.00%, 89.83%, 	, 60.94%, 95.28%, 76.42%
